@@ -4,11 +4,12 @@ import Color exposing (rgba)
 import Element exposing (..)
 import Element.Attributes exposing (..)
 import Element.Events exposing (..)
-import Html
+import Html exposing (Html)
 import Json.Decode
 import Style exposing (..)
 import Style.Color as Color
 import Style.Font as Font
+import Window
 
 
 type Styles
@@ -28,6 +29,7 @@ type Styles
     | TitleFlix
 
 
+colors : { navbarBackground : Color.Color, reactiveGreen : Color.Color }
 colors =
     { reactiveGreen = Color.rgb 85 175 106
     , navbarBackground = Color.darkCharcoal
@@ -74,20 +76,30 @@ stylesheet =
         ]
 
 
+main : Program { height : Int, width : Int } Model Msg
 main =
-    Html.beginnerProgram
-        { model = initialModel
+    Html.programWithFlags
+        { init = init
         , view = view
         , update = update
+        , subscriptions = subscriptions
         }
 
 
-initialModel =
-    { menu = Closed }
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Window.resizes Resize
+
+
+init : { width : Int, height : Int } -> ( Model, Cmd Msg )
+init flags =
+    ( { menu = Closed, viewport = flags }, Cmd.none )
 
 
 type alias Model =
-    { menu : MenuState }
+    { menu : MenuState
+    , viewport : Window.Size
+    }
 
 
 type MenuState
@@ -98,15 +110,17 @@ type MenuState
 type Msg
     = ToggleMenu
     | CloseMenu
+    | Resize Window.Size
 
 
+update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
     case msg of
         CloseMenu ->
-            { model | menu = Closed }
+            ( { model | menu = Closed }, Cmd.none )
 
         ToggleMenu ->
-            { model
+            ( { model
                 | menu =
                     case model.menu of
                         Open ->
@@ -114,51 +128,84 @@ update msg model =
 
                         Closed ->
                             Open
-            }
+              }
+            , Cmd.none
+            )
+
+        Resize viewport ->
+            ( { model | viewport = viewport }, Cmd.none )
 
 
+onClickPreventDefault : msg -> Element.Attribute variation msg
 onClickPreventDefault msg =
     onWithOptions "click"
         { preventDefault = True, stopPropagation = True }
         (Json.Decode.succeed msg)
 
 
+view : Model -> Html Msg
 view model =
     Element.viewport stylesheet <|
         column Main
             [ onClick CloseMenu ]
-            [ row Navbar
-                [ width fill
-                , paddingLeft 24
-                , paddingRight 24
-                , paddingTop 16
-                , paddingBottom 16
-                , verticalCenter
-                ]
-                [ row Title
-                    [ alignLeft
-                    , width (fillPortion 1)
-                    ]
-                    [ text "REACTIVE"
-                    , el TitleFlix [] (text "FLIX")
-                    ]
-                , row Elm
-                    [ width (fillPortion 1)
-                    , center
-                    ]
-                    [ text "Built with Elm!" ]
-                , row None
-                    [ alignRight
-                    , width (fillPortion 1)
-                    ]
-                    [ viewMenu model.menu ]
-                ]
+            [ viewNavbar model.viewport.width model.menu
             , image Backdrop
                 [ width fill ]
                 { src = "https://wallpaperscraft.com/image/space_background_blue_dots_73340_2300x1300.jpg", caption = "backdrop" }
             ]
 
 
+logo : Element Styles variation msg
+logo =
+    row Title
+        [ alignLeft
+        , width (fillPortion 1)
+        ]
+        [ text "REACTIVE"
+        , el TitleFlix [] (text "FLIX")
+        ]
+
+
+builtWithElm : Element Styles variation msg
+builtWithElm =
+    row Elm
+        [ width (fillPortion 1)
+        , center
+        ]
+        [ text "Built with Elm!" ]
+
+
+viewNavbar : Int -> MenuState -> Element Styles variation Msg
+viewNavbar viewportWidth menu =
+    let
+        menuControls alignment =
+            [ row None
+                [ alignment
+                , width (fillPortion 1)
+                ]
+                [ viewMenu menu ]
+            ]
+
+        contents =
+            if viewportWidth < 640 then
+                menuControls center
+            else if viewportWidth < 1024 then
+                List.append [ logo ] (menuControls alignRight)
+            else
+                List.append [ logo, builtWithElm ] (menuControls alignRight)
+    in
+    row Navbar
+        [ width fill
+        , paddingLeft 24
+        , paddingRight 24
+        , paddingTop 16
+        , paddingBottom 16
+        , verticalCenter
+        ]
+        contents
+
+
+viewMenu : MenuState -> Element Styles variation Msg
 viewMenu menu =
     let
         menuControls =
@@ -183,16 +230,19 @@ viewMenu menu =
                 |> below [ menuContents ]
 
 
+menuContents : Element Styles variation msg
 menuContents =
     column MenuContents
         [ alignRight ]
         (List.map viewMenuItem [ "Account", "Messages", "Sign Out" ])
 
 
+viewMenuItem : String -> Element Styles variation msg
 viewMenuItem caption =
-    el MenuItem [ padding 10 ] (text caption)
+    el MenuItem [ padding 16 ] (text caption)
 
 
+viewCaret : MenuState -> Element Styles variation msg
 viewCaret menu =
     let
         caretText =
