@@ -26,13 +26,13 @@ type Styles
     | MenuControls
     | MenuItem
     | Caret
-    | TitleFlix
+    | GreenEmphasis
 
 
-colors : { navbarBackground : Color.Color, reactiveGreen : Color.Color }
 colors =
     { reactiveGreen = Color.rgb 85 175 106
     , navbarBackground = Color.darkCharcoal
+    , mainBackground = Color.black
     }
 
 
@@ -40,9 +40,10 @@ stylesheet : StyleSheet Styles variation
 stylesheet =
     Style.styleSheet
         [ style None []
+        , style Main [ Color.background colors.mainBackground ]
         , style ProfileBadge [ Color.text Color.white ]
         , style Title [ Font.weight 400, Font.size 32 ]
-        , style TitleFlix [ Color.text colors.reactiveGreen ]
+        , style GreenEmphasis [ Color.text colors.reactiveGreen ]
         , style MenuContents [ Color.background colors.navbarBackground ]
         , style MenuControls
             [ cursor "pointer"
@@ -147,22 +148,32 @@ view : Model -> Html Msg
 view model =
     Element.viewport stylesheet <|
         column Main
-            [ onClick CloseMenu ]
+            [ onClick CloseMenu, height fill ]
             [ viewNavbar model.viewport.width model.menu
-            , image Backdrop
-                [ width fill ]
-                { src = "https://wallpaperscraft.com/image/space_background_blue_dots_73340_2300x1300.jpg", caption = "backdrop" }
+            , row None [ height fill, padding 20 ] [ backgroundImage ]
+                |> within
+                    [ reactiveConfLogo [] ]
             ]
 
 
-logo : Element Styles variation msg
-logo =
+reactiveConfLogo : List (Element.Attribute variation msg) -> Element Styles variation msg
+reactiveConfLogo attrs =
+    image None attrs { src = "reactive-logo.png", caption = "ReactiveConf" }
+
+
+backgroundImage : Element Styles variation msg
+backgroundImage =
+    image None [ width (percent 100) ] { src = "bratislava.jpg", caption = "Bratislava" }
+
+
+pageLogo : Element Styles variation msg
+pageLogo =
     row Title
         [ alignLeft
         , width (fillPortion 1)
         ]
-        [ text "REACTIVE"
-        , el TitleFlix [] (text "FLIX")
+        [ text "CSS"
+        , el GreenEmphasis [] (text " as bytecode")
         ]
 
 
@@ -190,9 +201,9 @@ viewNavbar viewportWidth menu =
             if viewportWidth < 640 then
                 menuControls center
             else if viewportWidth < 1024 then
-                List.append [ logo ] (menuControls alignRight)
+                List.append [ pageLogo ] (menuControls alignRight)
             else
-                List.append [ logo, builtWithElm ] (menuControls alignRight)
+                List.append [ pageLogo, builtWithElm ] (menuControls alignRight)
     in
     row Navbar
         [ width fill
@@ -213,7 +224,7 @@ viewMenu menu =
                 [ spacing 16, onClickPreventDefault ToggleMenu ]
                 [ image ProfileBadge
                     [ width (px 32), height (px 32) ]
-                    { src = "https://pbs.twimg.com/profile_images/635812303342956545/Fo4RyEgH_400x400.jpg", caption = "Richard Feldman" }
+                    { src = "profile.jpg", caption = "Richard Feldman" }
                 , row MenuControls
                     [ spacing 12 ]
                     [ text "rtfeldman"
@@ -254,58 +265,3 @@ viewCaret menu =
                     "▲"
     in
     el Caret [ center, verticalCenter ] (text caretText)
-
-
-
---
---
--- navbar =
---     column Navbar
---         [ padding 20
---         , alignLeft
---         , width <| px 300
---         ]
---         [ el H3 [] (text "Channels") ]
---
---
--- inspector =
---     column Inspector
---         [ padding 20
---         , alignLeft
---         , width <| px 200
---         , height fill
---         ]
---         [ text "Inspector" ]
---
---
--- body =
---     column None
---         [ alignLeft
---         , width fill
---         ]
---         [ messages, messageBox ]
---
---
--- messages =
---     column
---         Chat
---         [ width fill
---         , alignLeft
---         , yScrollbar
---         ]
---         (List.map message <| List.range 1 100)
---
---
--- message n =
---     el None
---         [ padding 10 ]
---         (text <| "message" ++ toString n)
---
---
--- messageBox =
---     el MessageBox
---         [ height <| px 300
---         , width fill
---         , verticalCenter
---         ]
---         (text "Message box")
